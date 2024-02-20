@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from aws_utils import AwsHelper
+from aws_cost_explorer import AwsCEHelper
 import streamlit as st
 from pyplot_utils import graphics
 import pandas as pd
@@ -19,7 +19,7 @@ def show_monthly_cost_by_service(costs,st):
 
     st.table(costs.groupby('Date')['Cost'].sum().reset_index())
 
-aws_helper = AwsHelper()
+aws_helper = AwsCEHelper()
 
 # Définir la période de temps pour laquelle récupérer les coûts
 end_date = datetime.today()- timedelta(days=1)

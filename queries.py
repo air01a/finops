@@ -1,6 +1,6 @@
 def format_date(date, granularity):
     if granularity=='HOURLY':
-          return date.strftime('%Y-%m-%dT00:00:00Z')
+          return date.strftime('%Y-%m-%dT22:00:00Z')
     else:
          return date.strftime('%Y-%m-%d')
 
