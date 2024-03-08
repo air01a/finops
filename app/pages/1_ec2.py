@@ -2,7 +2,17 @@ import streamlit as stm
 from datetime import datetime, timedelta
 from aws_cost_explorer import AwsCEHelper
 import streamlit as st
+
+import os
+import sys
+
+# Ajouter le répertoire parent au sys.path
+parent_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, parent_path+'/utils/')
+
 from pyplot_utils import graphics
+from sidebar import show_side_bar
+
 
 def average(lst): 
     return sum(lst) / len(lst) 
@@ -36,6 +46,8 @@ aws_helper = AwsCEHelper()
 # Définir la période de temps pour laquelle récupérer les coûts
 start_date = datetime.today() - timedelta(days=13)
 end_date = datetime.today() - timedelta(days=2)
+
+#start_date, end_date = show_side_bar(st,start_date, end_date)
 last_month = end_date - timedelta(weeks=4)
 # Obtenir et afficher les coûts EC2
 ec2_costs = aws_helper.get_hourly_cost(start_date, end_date)

@@ -1,6 +1,12 @@
 from datetime import datetime, timedelta
 from aws_cost_explorer import AwsCEHelper
 import streamlit as st
+
+
+import sys
+sys.path.insert(0, './/utils/')
+
+
 from pyplot_utils import graphics
 import pandas as pd
 #Example https://github.com/aws-samples/aws-cost-explorer-report/blob/master/src/lambda.py
@@ -22,6 +28,7 @@ def show_monthly_cost_by_service(costs,st):
 aws_helper = AwsCEHelper()
 
 # Définir la période de temps pour laquelle récupérer les coûts
+
 end_date = datetime.today()- timedelta(days=2)
 last_month = end_date - timedelta(weeks=4)
 last_six_month = end_date - timedelta(days=180)
