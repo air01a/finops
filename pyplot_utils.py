@@ -1,4 +1,5 @@
 import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
 
 class graphics:
@@ -18,6 +19,15 @@ class graphics:
     def pie(self, data,name, value,title):
         fig = px.pie(data, values=value, names=name, title=title)
         fig.update_traces(textposition='inside', textinfo='label+percent')
+        self.st.plotly_chart(fig, use_container_width=True)
+
+    def indicator(self, value, title, gauge=None):
+        fig = go.Figure(go.Indicator(
+                mode = "gauge+number",
+                value = value,
+                domain = {'x': [0, 1], 'y': [0, 1]},
+                title = {'text': title},
+                gauge = gauge))
         self.st.plotly_chart(fig, use_container_width=True)
 
     def bar(self, data, x,y , title, groupby):

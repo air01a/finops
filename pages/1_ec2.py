@@ -35,7 +35,7 @@ aws_helper = AwsCEHelper()
 
 # Définir la période de temps pour laquelle récupérer les coûts
 start_date = datetime.today() - timedelta(days=13)
-end_date = datetime.today() - timedelta(days=1)
+end_date = datetime.today() - timedelta(days=2)
 last_month = end_date - timedelta(weeks=4)
 # Obtenir et afficher les coûts EC2
 ec2_costs = aws_helper.get_hourly_cost(start_date, end_date)

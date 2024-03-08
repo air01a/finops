@@ -1,4 +1,4 @@
-from queries import get_ec2_hourly_on_demand, get_ec2_hourly_on_demand_group_by_instancetype, cost_by_service
+from queries import get_ec2_hourly_on_demand, get_ec2_hourly_on_demand_group_by_instancetype, cost_by_service, format_date
 import boto3
 import pandas as pd
 
@@ -6,6 +6,7 @@ class AwsCEHelper:
 
     def __init__(self):
         self.client = boto3.client('ce')
+        self.client_sp = boto3.client('savingsplans')
 
 
     def query(self, query):
@@ -45,20 +46,13 @@ class AwsCEHelper:
                 result.append([date, instance,amount]) 
         df = pd.DataFrame(result, columns=['Date','Instance', 'Cost'])
         
-
         all_dates = df['Date'].unique()
         all_instance_types = df['Instance'].unique()
         multi_index = pd.MultiIndex.from_product([all_dates, all_instance_types], names=['Date', 'Instance'])
 
-        # Étape 2: Créer un nouveau DataFrame à partir de cet index multi-niveaux
         df_all_combinations = pd.DataFrame(index=multi_index).reset_index()
-
-        # Étape 3: Fusionner avec le DataFrame original
         df_merged = pd.merge(df_all_combinations, df, on=['Date', 'Instance'], how='left')
-
-        # Étape 4: Remplir les valeurs manquantes dans 'Cost' par 0
         df_merged['Cost'] = df_merged['Cost'].fillna(0)
-
         df_merged[['Instance_Type', 'Instance_Size']] = df_merged['Instance'].str.split('.', expand=True)
 
         return df_merged #pd.DataFrame(result, columns=['Date','Instance_Type','Instance_Size', 'Instance', 'Cost'])
@@ -100,6 +94,64 @@ class AwsCEHelper:
         # Ajoutez d'autres tailles si nécessaire
         large_sizes = ['2xlarge', '4xlarge', '8xlarge', '9xlarge', '12xlarge', '16xlarge', '18xlarge', '24xlarge', '32xlarge']
         return large_sizes
+
+    def get_ri_usage(self,start_date, end_date):
+        details = []
+        response = self.client.get_savings_plans_utilization_details(
+        TimePeriod={
+            'Start': format_date(start_date,'DAILY'),
+            'End': format_date(end_date,'DAILY')
+        },)
+
+        arns=[]
+        for detail in response['SavingsPlansUtilizationDetails']:
+            arn=detail['SavingsPlanArn']
+            utilization=detail.get('Utilization', {}).get('UtilizationPercentage', 'N/A')
+            cost_equivalent=detail.get('Savings', {}).get('OnDemandCostEquivalent', 'N/A')
+            hourly_commitment = float(detail.get('Attributes', {}).get('HourlyCommitment', 'N/A')) 
+            total_commitment =  float(detail.get('Utilization', {}).get('TotalCommitment', 'N/A'))
+            end = detail.get('Attributes', {}).get('EndDateTime', 'N/A').split('T')[0]
+            status = detail.get('Attributes', {}).get('Status', 'N/A')
+            r_type = detail.get('Attributes', {}).get('SavingsPlansType', 'N/A')
+            family = detail.get('Attributes', {}).get('InstanceFamily', 'N/A')
+            if utilization!='N/A':
+                utilization = int(float(utilization))
+            savings=int(720 * float(detail.get('Savings', {}).get('NetSavings', 'N/A')) /(total_commitment/hourly_commitment))
+            details.append([r_type, family, status, end, utilization, savings, total_commitment, hourly_commitment, total_commitment/hourly_commitment,arn])
+            #arns.append(arn)
+
+        details = pd.DataFrame(details, columns=['type','family', 'status','end_date','utilization','monthly_savings','total_commitment','hourly_commitment','hours','arn'])
+
+        total_commit =  float(response['Total']["Utilization"]["TotalCommitment"])
+        utilization =  float(response['Total']["Utilization"]["UtilizationPercentage"])
+        savings = details['monthly_savings'].sum()
+        ondemand_equivalent = float(response['Total']["Savings"]["OnDemandCostEquivalent"])
+
+
+        costs = self.get_hourly_cost(start_date, end_date)
+        reservation_rate = 100-int(100*pd.to_numeric(costs['Cost']).min()/details["hourly_commitment"].sum())
+        total = [[total_commit, utilization, savings,ondemand_equivalent,reservation_rate]]
+        total = pd.DataFrame(total, columns=['commitment','utilization','savings','ondemand_equivalent','reservation_rate']) 
+
+
+        """response = self.client_sp.describe_savings_plans(savingsPlanArns=arns)
+        families = []
+        types = []
+        ids = []
+
+
+        for det in response['savingsPlans']: 
+            families.append(det.get("ec2InstanceFamily","N/A"))
+            types.append(det['savingsPlanType'])
+            ids.append(det['savingsPlanId'])
+        
+        details['family']=families
+        details['type'] = types
+        details['id']=ids"""
+
+
+
+        return details, total
 
     def query_reco(self, type):
         try:
